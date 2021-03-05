@@ -5,10 +5,12 @@ library(magrittr)
 library(gridExtra)
 library(ggpattern)
 library(dplyr)
-
-####Test whether sampling is significantly non-random####
-####     Written by Amy M. Van Cise                  ####
-#########################################################
+ 
+####   Test whether sampling is significantly non-random     ####
+####             adapted by Amy M. Van Cise                  ####
+#### from code by K. Alexandra Curtis (alex.curtis@noaa.gov) ####
+####              shared on March 6, 2020                    ####
+#################################################################
 
 ##function to get legend from ggplot list
 get_legend<-function(myggplot){
@@ -78,20 +80,28 @@ yeartest <- wilcox.test(annual.resight$mean,randsample$mean)
 stockwilcox.p <- c(stockwilcox.p, yeartest$p.value)
 
 # ggplot
+
+#uniform font sizes
+geom.text.size = 7
+theme.size = (14/5) * geom.text.size
+
+
 sight.hist <- rbind(annual.resight[c("mean","type")], randsample)
 stockplot.list[[j]] <- ggplot(sight.hist, aes(mean, fill = type)) +
   geom_density(color="#e9ecef", alpha = 0.3, position = "identity") +
   scale_fill_manual(values=c("#69b3a2", "#404080"), labels = c("Real data", "Simulated data")) +
-  theme_classic(18) +
+  theme_classic(theme.size) +
   labs(fill="")+
-  xlab(paste(ifelse(subset[j] == "Oahu", "O‘ahu",
-                    ifelse(subset[j] == "Kauai/Niihau", "Kaua‘i/Ni‘ihau",
-                           ifelse(subset[j] == "Hawaii", "Hawai‘i", subset[j]))),
+  xlab("") +
+  ylab("") +
+  annotate("text", label = paste(ifelse(subset[j] == "Oahu", "O\u02BBahu",
+                    ifelse(subset[j] == "Kauai/Niihau", "Kaua\u02BBi/Ni\u02BBihau",
+                           ifelse(subset[j] == "Hawaii", "Hawai\u02BBi", subset[j]))),
                            ", ",
              ifelse(yeartest$p.value < 0.0001, "p < 0.0001",
-                    paste("p = ", format(yeartest$p.value, digits = 2), sep = "")), sep = "")) +
-  ylab("") +
-  theme(plot.margin=unit(c(0.2,0.2,0.2,0.2), "cm"))
+                    paste("p = ", format(yeartest$p.value, digits = 2), sep = "")), sep = ""), 
+           x = Inf, y = Inf, hjust = 1, vjust = 1, size = geom.text.size) +
+  theme(plot.margin=unit(c(0.2,0.2,0.2,0.2), "cm"), legend.text=element_text(size=20))
 
 # same plot, in black and white 
 # stockplot.list[[j]] <- ggplot(sight.hist, aes(mean)) +
@@ -100,19 +110,20 @@ stockplot.list[[j]] <- ggplot(sight.hist, aes(mean, fill = type)) +
 #   theme_bw(18) +
 #   theme(axis.title.x = element_text(hjust = 1)) +
 #   labs(fill="")+
-#   xlab(paste(ifelse(subset[j] == "Oahu", "O‘ahu", 
-#                     ifelse(subset[j] == "Kauai/Niihau", "Kaua‘i/Ni‘ihau",
-#                            ifelse(subset[j] == "Hawaii", "Hawai‘i", subset[j]))),
+#   annotate("text", label = paste(ifelse(subset[j] == "Oahu", "O\u02BBahu", 
+#                     ifelse(subset[j] == "Kauai/Niihau", "Kaua\u02BBi/Ni\u02BBihau",
+#                            ifelse(subset[j] == "Hawaii", "Hawai\u02BBi", subset[j]))),
 #              ", ",
 #              ifelse(yeartest$p.value < 0.0001, "p < 0.0001", 
-#                     paste("p = ", format(yeartest$p.value, digits = 2), sep = "")), sep = "")) +
+#                     paste("p = ", format(yeartest$p.value, digits = 2), sep = "")), sep = ""), x = Inf, y = Inf, hjust = 1, vjust = 1) +
 #   ylab("") +
+#   xlab("") +
 #   theme(plot.margin=unit(c(0.2,0.2,0.2,0.2), "cm"))
 
 }
 
 
-#### Test for non-random sampling within Areas###
+#### Test for non-random sampling within subreas###
 
 # create looping vector and empty data objects
 subarea <- c("KA","KB","KC","KD","OA","OB","MA","MB","HA","HB")
@@ -177,12 +188,14 @@ for (j in 1:length(subarea)){
     subplot.list[[j]] <- ggplot(sight.hist, aes(mean, fill = type)) +
       geom_density(color="#e9ecef", alpha = 0.4, position = "identity") +
       scale_fill_manual(values=c("#69b3a2", "#404080"), labels = c("Real data", "Simulated data")) +
-      theme_classic(18) +
-      labs(fill="")+
-      xlab(paste(subarea[j], ", ",
-                 ifelse(yeartest$p.value < 0.0001, "p < 0.0001",
-                        paste("p = ", format(yeartest$p.value, digits = 2), sep = "")), sep = "")) +
+      theme_classic(theme.size) +
+      labs(fill="") +
+      xlab("") +
       ylab("") +
+      annotate("text", label = paste(subarea[j], ", ",
+                 ifelse(yeartest$p.value < 0.0001, "p < 0.0001",
+                        paste("p = ", format(yeartest$p.value, digits = 2), sep = "")), sep = ""), 
+               x = Inf, y = Inf, hjust = 1, vjust = 1, size = geom.text.size) +
       theme(plot.margin=unit(c(0.2,0.2,0.2,0.2), "cm"), legend.text=element_text(size=20))
     
  # same plot, in black and white 
@@ -191,11 +204,10 @@ for (j in 1:length(subarea)){
     #   theme_bw(18) +
     #   theme(axis.title.x = element_text(hjust = 1)) +
     #   labs(fill="")+
-    #   xlab(paste(subarea[j], ", ",
+    #   annotate("text", label = paste(subarea[j], ", ",
     #              ifelse(yeartest$p.value < 0.0001, "p < 0.0001", 
-    #                     paste("p = ", format(yeartest$p.value, digits = 2), sep = "")), sep = "")) +
+    #                     paste("p = ", format(yeartest$p.value, digits = 2), sep = "")), sep = ""), x = Inf, y = Inf, hjust = 1, vjust = 1) +
     #   scale_pattern_discrete(name = "", labels = c("Real dataset", "Simulated dataset")) +
-    #   ylab("") +
     #   theme(plot.margin=unit(c(0.2,0.2,0.2,0.2), "cm"))
 
 }

@@ -35,11 +35,19 @@ numobs <- read.csv(photoIDfile, stringsAsFactors = FALSE) %>%
 
 #count number of "pelagic" individuals removed from dataset
 numpel <- read.csv(photoIDfile, stringsAsFactors = FALSE) %>% 
-  filter(Area == "Offshore" | as.numeric(Depth) > 3000) %>% 
+  filter(Area == "Offshore" | as.numeric(Depth) > 3000 | Island == "Kaula Rock") %>% 
   group_by(ID..) %>% 
   filter(n() == 1) %>% 
   ungroup() %>% 
   tally()
+
+#find ind. encountered at Kaula Rock
+kaula <- read.csv(photoIDfile, stringsAsFactors = FALSE) %>% 
+  filter(Island == "Kaula Rock") %>% 
+  .$ID..
+
+kaula.inds <- read.csv(photoIDfile, stringsAsFactors = FALSE) %>% 
+  filter(ID.. %in% kaula)
 
 #calculate median ind. sightings
 #capdat dataset comes from RMark_abundance_datainput.R
@@ -132,8 +140,47 @@ sub.enc <- capdat %>%
                       Other.encounters = sum(.$Other.encounters, na.rm=T),
                       Total.encounters = sum(.$Total.encounters, na.rm=T, check.names=FALSE))) %>% 
   rename("Num individuals" = Num.individuals, "Span of Years" = Span.of.Years, "CRC encounters" = CRC.encounters,
-         "PWF ecnounters" = PWF.encounters, "Other encounters" = Other.encounters, "Total encounters" = Total.encounters) %>% 
+         "PWF encounters" = PWF.encounters, "Other encounters" = Other.encounters, "Total encounters" = Total.encounters) %>% 
   select(Stock, Subarea, "Span of Years", "Num individuals", everything())
+
+#calculate number of encounters in each subarea and year by source of encounter
+sub.enc.year <- capdat %>% 
+  filter(!is.na(subarea)) %>% 
+  distinct(Group, .keep_all = TRUE) %>% 
+  group_by(Area,subarea,year) %>% 
+  summarize(CRC.encounters = sum(Source == "RWB"), 
+            PWF.encounters = sum(Source == "PWF Line Transect" | Source == "PWF Platform of Opportunity" |
+                                   Source == "PWF Donation" | Source == "PWF" | Source == "PWF "),
+            Other.encounters = sum(!(Source %in% c("RWB", "PWF Line Transect", "PWF Platform of Opportunity", "PWF Donation", "PWF", "PWF ")))) %>% 
+  ungroup() %>% 
+  #mutate(Total.encounters = rowSums(.[4:6])) %>% 
+  mutate(Area = factor(.$Area, levels = arealevels)) %>% 
+  arrange(Area) %>% 
+  rename(Subarea = subarea) %>% 
+  rename(Stock = Area) %>% 
+  left_join(sub.ind, by = c("Stock","Subarea")) %>% #merge with sub.ind 
+  # rbind(., data.frame(Stock= "Total", Subarea = "", year = "",
+  #                     Num.individuals = sum(.$Num.individuals),
+  #                     CRC.encounters = sum(.$CRC.encounters, na.rm=T), 
+  #                     PWF.encounters = sum(.$PWF.encounters, na.rm=T), 
+  #                     Other.encounters = sum(.$Other.encounters, na.rm=T),
+  #                     Total.encounters = sum(.$Total.encounters, na.rm=T, check.names=FALSE))) %>% 
+  rename("Num individuals" = Num.individuals, "CRC encounters" = CRC.encounters,
+         "PWF encounters" = PWF.encounters, "Other encounters" = Other.encounters) %>% 
+  select(Stock, Subarea, year, "Num individuals", everything()) %>% 
+  pivot_longer(c("CRC encounters","PWF encounters","Other encounters"), names_to = "enc_type", values_to = "num_enc")
+
+my.pal = pal_futurama()(12)[c(2:4)]
+pdf(file = "Supplemental Figure S1.sightings-by-year.pdf")
+ggplot(data = sub.enc.year, aes(x=year, y = num_enc, fill = enc_type)) +
+  geom_bar(stat = "identity") +
+  facet_wrap(~Stock)+
+  theme_classic(base_size = 14) +
+  scale_fill_manual(values = my.pal) +
+  ylab("Number of encounters") +
+  labs(fill = "Encounter type")
+dev.off()
+  
 
 #count number of inds seen in both Maui Nui and Oahu
 MnOinds <- capdat %>% 
@@ -161,6 +208,41 @@ oahueffort <- capdat %>%
   filter(Area == "Oahu") %>% 
   group_by(year) %>% 
   summarize(Sightings = n(), Individuals = length(unique(ID..)))
+
+#number of sightings on Hawaii windward side by year
+hawaiiwindeffort <- capdat %>% 
+  filter(Area == "Hawaii") %>% 
+  mutate(Long=as.numeric(Long), Lat = as.numeric(Lat)) %>% 
+  filter(!is.na(Long)) %>%
+  mutate(Long = {ifelse(.$Long > 0, (.$Long*-1), .$Long)}) %>%
+  filter(abs(Long) < 155.8) %>% 
+  group_by(year) %>% 
+  summarize(Sightings = n(), Individuals = length(unique(ID..)))
+
+hawaiiwind <- capdat %>% 
+  filter(Area == "Hawaii") %>% 
+  mutate(Long=as.numeric(Long), Lat = as.numeric(Lat)) %>% 
+  filter(!is.na(Long)) %>%
+  mutate(Long = {ifelse(.$Long > 0, (.$Long*-1), .$Long)}) %>%
+  filter(abs(Long) < 155.8) 
+
+hawaiiwindInd <- unique(hawaiiwind$ID..)
+
+hawaiiwindIndresight <- capdat %>% 
+  filter(ID.. %in% hawaiiwindInd) %>%
+  # mutate(Long=as.numeric(Long), Lat = as.numeric(Lat)) %>% 
+  # filter(!is.na(Long)) %>%
+  # mutate(Long = {ifelse(.$Long > 0, (.$Long*-1), .$Long)}) %>%
+  group_by(ID..) %>% 
+  filter(n() >1) %>% 
+  n_groups()
+
+# ggplot(data = coastr)+
+#     geom_sf(fill = "#00695C", alpha=0.5) +
+#     coord_sf(crs = st_crs(4135)) +
+#     xlim(-156.3,-154.6) +
+#     ylim(18.9,20.5) +
+#     geom_point(data=hawaiiwindIndresight, aes(x=Long, y=Lat, color=ID..), position = "jitter")
 
 #map geographic coverage of sightings by year
 # oahucoverage <- capdat %>% 

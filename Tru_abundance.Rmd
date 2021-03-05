@@ -1,0 +1,477 @@
+---
+title: "Mark-recapture estimates suggest declines in abundance of common bottlenose dolphin stocks in the main Hawaiian Islands"
+author: "Amy M. Van Cise^1\\*^, Robin W. Baird^1^, Annette E. Harnish^1^, Jens J. Currie^2^, Stephanie H. Stack^2^, Tori Cullins^3^, Antoinette M. Gorgone^1^"
+
+output: 
+  word_document:
+    fig_width: 15
+    fig_height: 5
+    fig_caption: true
+    reference_docx: Tru.formatting.8.3.2020.docx
+bibliography: C:/Users/Amy/Google Drive/library.bib
+csl: marine-ecology-progress-series.csl
+---
+
+1. Cascadia Research Collective, Olympia, WA 98501, USA
+2. Pacific Whale Foundation, Wailuku, HI 96793, USA
+3. Wild Dolphin Foundation, `r paste0("Wai\u02BBanae")`, HI 96792, USA
+
+<br>
+
+^\*^Corresponding author email: avancise\@gmail.com
+
+<br>
+
+Running page head: Population trends in Hawaiian bottlenose dolphins
+
+```{r setup, include=FALSE, warning = FALSE}
+knitr::opts_chunk$set(echo = FALSE, message = FALSE, dev = c('pdf','png'), fig.align = 'center')
+library(ggplot2)
+library(knitr)
+library(kableExtra)
+library(captioner)
+library(dplyr)
+library(magrittr)
+library(tidyr)
+library(ggsci)
+library(gridExtra)
+library(grid)
+library(cowplot)
+library(english)
+library(sf)
+
+fig.nums <- captioner(prefix = 'Figure')
+fig.nums('rand.test', "Within-stock comparisons of the dataset used in this study with a simulated randomly sampled dataset. All p-values displayed are the probability that the two distributions are the same, from a two-sample Wilxocon Rank Sum test.")
+fig.nums('ind.travel', "Estimates of individual inter-annual movement distance compared with expected interannual movements of individuals in a randomly mixing stock. All p-values are the likelihood that the real distance traveled is not smaller than the simulated distance traveled, from a one-sided Wilcoxon Rank Sum test.")
+fig.nums('stock.strata',"(A) Sighting locations and subarea stratification of individuals in this study. Individuals were assigned to a subarea based on the location where they were first sighted. Subareas were defined by assessing natural breaks in the stock, or by using shifts in geography or aspect of land that would affect how protected nearshore habitat is. Red lines indicate stock boundaries, grey lines indicate 1000 m depth contour. (B) Within-subarea comparison of the dataset used in this study with a simulated randomly sampled dataset. All p-values displayed are the probability that the two distributions are the same, from a two-sample Wilxocon Rank Sum test.")
+fig.nums('accum.rare', "Discovery curves illustrating sampling coverage based on the rate of accumulation of new individuals over cumulative number of sightings, both (A) by stock and (B) by subarea within each stock. In (B), the lower left plot region is enlarged in grey (lower right). In each plot, a 1:1 line is shown in grey as a reference.")
+fig.nums('annual.abun',"Population trends for each of the four island stocks within the Hawaiian Island population of bottlenose dolphins. Vertical bars indicate 95% confidence intervals. Abundance estimates are only shown for years in which there were encounters within each island stock.")
+
+```
+
+```{r data, cache = FALSE, warning = FALSE, message = FALSE, results = 'hide'}
+source("RMark_abundance.R")
+source("subarea resights.R")
+```
+```{r data2, cache = FALSE, warning = FALSE, message = FALSE, results = 'hide'}
+source("test.rand.sample.R")
+source("Effort testing.R")
+```
+```{r data3, cache = TRUE, warning = FALSE, message = FALSE, results = 'hide'}
+source("distance.permutation.test.greatcircle.R")
+```
+
+<br>
+
+ABSTRACT: Species conservation relies on understanding population demographics, yet this information is lacking for many species and populations. Four stocks of common bottlenose dolphins (*Tursiops truncatus*) inhabiting the waters surrounding the main Hawaiian Islands are exposed to anthropogenic disturbances including fisheries interactions, tourism, Naval activities, ocean noise, and contaminants. Although these stocks are managed under the Marine Mammal Protection Act, a demographic assessment has not been undertaken since 2006, and there is currently no information on population trends. We combine regular survey effort with citizen science contributions to estimate apparent survival and annual abundance within each stock using photographs collected between 2000 and 2018. Over this time period we collected `r format(nrow(capdat), big.mark = ",")` high-quality identifications of `r length(unique(capdat$ID..))` distinctive individuals across all four stocks. Analyses of inter-annual movements indicated individuals exhibit restricted habitat use within stocks, which contributed to non-random sampling. Annual abundance estimates ranged from the 10s to the low 100s. Apparent survival ranged from `r format(min(all_model_phi$estimate), digits = 2)` to `r format(max(all_model_phi$estimate), digits = 2)`, with lower-than-expected estimates in all stocks. Annual abundance estimates declined in three of the four stocks; however, this decline was not significant for the `r paste0("Kaua\u02BBi/Ni\u02BBihau")` and `r paste0("O\u02BBahu")` stocks, and may be an artifact of sampling design in all stocks. Given the small population size for these stocks, it is important to closely monitor trends in abundance as a first step in mitigating negative effects of anthropogenic activities. Future efforts should focus on consistent geographic coverage in all stocks to decrease model uncertainty and improve trend assessment.
+
+<br> 
+
+Key Words: Demographics, Bottlenose dolphin, Abundance, Survival, Mark-recapture
+
+###### Page
+
+<br>
+
+## 1. INTRODUCTION
+Modern strategies for the conservation and management of species rely primarily on the knowledge of population demographics, such as abundance, recruitment, survival, migration, and trends in these over time. In addition to forming the basis of regional and national management plans, these parameters are important criteria to the IUCN determination of extinction risk, which are periodically reviewed and rely on available data [@Wells2019]. Population demographic patterns are known to vary within species, including at the level of stocks or demographically independent populations (DIPs), and are influenced by the local environment, interactions with humans, and behaviors such as movement patterns and degree of site fidelity [@Lebreton1992; @Switzer1993]. It is especially important to monitor these trends in species or populations that regularly come in contact with anthropogenic stressors, in order to understand whether those stressors threaten the population or species.
+
+In the United States, population demographics of most cetaceans are assessed by the National Marine Fisheries Service using observational line-transect surveys conducted from a variety of platforms [e.g. @Bradford2017]. However, these surveys are decreasing in frequency, and do not always capture near-shore populations sufficiently to permit abundance estimation for the entire population. In these cases, mark-recapture methods that use natural scars and coloration patterns to identify individuals can be an effective way to estimate trends in population abundance, recruitment, and apparent survival, including both death and emigration [e.g. @Haughey2020; @Rosel2011; @Conn2011]. Mark-recapture surveys can be conducted from small vessels nearshore, and thus are often an effective high-resolution tool to assess the demographics of neritic populations.
+
+Common bottlenose dolphins (*Tursiops truncatus*, or bottlenose dolphins) are globally distributed in tropical and warm-temperate waters. They are commonly found in nearshore waters, but are known to form offshore populations in some regions [e.g. @Silva2009; @Conn2011;@Rosel2011], which will occasionally visit nearshore habitats. Studies of coastal populations of bottlenose dolphins indicate a wide range of distributional behaviors, including seasonal migrations, periodic residency, and long-range movements [@Wells2018]. They live in fission-fusion societies, regularly forming small groups whose composition can be determined by a combination of sex, age, reproductive condition, familial relations, affiliation histories, and foraging habits. These smaller groups will sometimes join to form groups of more than 100, occasionally exceeding 1,000 [@Rogers2004; @Connor2001; @Louis2018]. They are social learners and are known to transfer behaviors such as feeding techniques, vocal behavior, and play behaviors [e.g. @Krutzen2014; @Sargeant2005; @Krutzen2005; @Reiss1993; @McCowan2000]. In some populations, social groups have been shown to have distinct ecological niches [@Louis2018]; this strategy of resource partitioning is thought to reduce competition and allow for larger local populations.
+
+Although bottlenose dolphins are one of the most common delphinids, and are classified by the IUCN as a species of least concern, they are also listed as having an unknown population trend. The IUCN considers this species locally data deficient with respect to abundance and distribution [@Wells2019]. Within many local populations, abundance estimates are hampered by large, unknown, and/or poorly defined distributional ranges, and insufficient genetic data to determine subpopulation structure and patterns of residency or habitat use [e.g. @Forcada2004]. As a coastally-distributed species, bottlenose dolphins face a number of natural and anthropogenic threats that may negatively affect survival and abundance, including fisheries interactions [@Morteo2011; @Baird2016a], disturbance from tour vessels [@Bejder2006], vessel strikes [@Dwyer2014], contaminants [@Wells2004; @Reif2006], harmful algal blooms [@Twiner2012], habitat loss and degradation [@Karczmarski2017], oceanic noise disturbance [@Buckstaff2004], and cumulative impacts [@Maxwell2013]; although in some specialized cases human interactions can have a positive effect on population demographics [@Bezamat2018].
+
+In the main Hawaiian Islands, bottlenose dolphins form four island-associated stocks with high site fidelity and little mixing between them [@Baird2009; @Martien2011; @Baird2016a]. Bottlenose dolphins inhabiting the deeper waters surrounding the islands are likely part of a broadly-distributed pelagic population [@Carretta2019; @Martien2011] that will occasionally visit the shallower waters surrounding the islands. These stocks are managed by the National Marine Fisheries Service, as mandated by the Marine Mammal Protection Act (MMPA; 50 CFR 216) in order to assess the impact of anthropogenic activities on population demographics. As part of Baird et al.'s (2009) photo-identification (ID) study, abundance of marked animals was estimated using the Lincoln-Petersen estimator [@Seber1982] applied to mark-recapture data for each of the four stocks between 2000 and 2006. Based on that paper, stock estimates were 184 for the `r paste0("Kaua\u02BBi/Ni\u02BBihau")` stock, 743 for `r paste0("O\u02BBahu")`, 91 for Maui Nui, and 128 for `r paste0("Hawai\u02BBi")` [@Carretta2019]. However, NOAA considers these estimates outdated for the purposes of stock management, and to date there is no assessment of population trends over time. Here, we estimate abundance and apparent survival (affected by both death and emigration) of each stock within the resident population using photo-ID mark-recapture models, and assess trends in abundance between 2000 and 2018.
+
+
+<br>
+
+
+## 2. METHODS
+# 2.1 Data collection
+Dorsal photographs were collected around the main Hawaiian Islands between `r min(capdat$year)` and `r max(capdat$year)` from both systematic surveys by Cascadia Research Collective (CRC) [@Baird2013a], and the Pacific Whale Foundation (PWF), as well as opportunistic sightings from other researchers and citizen scientists, totaling `r length(unique(capdat$date))` days with bottlenose dolphin encounters over the `r max(capdat$year, na.rm=TRUE)-min(capdat$year, na.rm=TRUE)`-year period.  For the purpose of this study, an encounter is defined as an observation of one or more individual bottlenose dolphins in a group, during which time photographs are taken of as many individuals as possible. A single day may include one or more encounters with bottlenose dolphins. Photographs used in an earlier study [@Baird2009] were incorporated into the sample. All photographs, regardless of source, were processed as in Baird et al. [-@Baird2009]. An expert initially examined photos from each encounter, grouping photos by individual. For each sighting of each individual, the best photo was scored for the quality of the photograph and distinctiveness of the individual. Scores are 1-4, with 4 representing the highest quality and distinctiveness. Once all individuals in an encounter were identified, those individuals were compared to the rest of the dataset to search for a match. Matches were confirmed by a second observer, and unmatched individuals were once again compared with the dataset by a second observer to confirm no match.
+
+# 2.2 Data quality control
+Prior to data analysis, the dataset of identified individuals was adjusted as follows:
+
+1. Individuals were removed if their distinctiveness score was less than 3;
+2. Individual sightings were removed if the highest photo quality was less than 3;
+3. Individuals identified as belonging to a non-resident stock (see below) were removed;
+4. Individual sightings were removed if they came from encounters (n=17) that have not been completely processed, as incomplete encounters (i.e. encounters where not all photographs have been processed) could bias the results. This resulted in removal of 41 individual sightings.
+5. Sightings from the windward side of `r paste0("Hawai\u02BBi")` Island were removed from this study, because inconsistent sampling in that region over the study period is likely to bias the results.
+
+<br>
+
+# 2.3 Testing dataset biases
+In order to test the assumption that individuals were sampled at random within a stock, we compared the frequency of individual re-sights to that expected from a randomly sampled stock. We generated simulated sighting datasets for each stock following the approach outlined in Kery and Schaub [-@Kery2012], given the number of sampling occasions and average number of new individuals encountered on each sampling occasion for each stock, using an annual apparent survival of 0.9 [e.g. @Stolen2003] and annual re-sighting probability of 0.4 [@Kery2012] for all stocks. We then counted the number of times each individual was sighted over the study period in both the simulated and real datasets, and tested for statistical differentiation in sighting rate between the simulated and real datasets using a two-sample Wilcoxon Rank Sum (aka Mann-Whitney) test.
+
+We further tested for patterns of spatio-temporal variability in individual habitat use within stocks that might lead to sampling bias in the dataset. Because some citizen scientist contributions do not have associated location data, these were excluded from this test. To estimate average individual inter-annual travel distance, we randomly selected 1 location per individual per year, calculated the distance between locations, and took the mean across all individuals and all years. To estimate the expected inter-annual travel distance for a randomly mixed population, we randomly selected $x$ individual locations from all available locations per year, where $x$ = the number of actual individual sightings in each year, and again calculated the mean distance across all individuals and years. We then compared the true inter-annual distance to the expected inter-annual travel distance in a randomly mixing population using a one-sided Wilcoxon Rank Sum test.
+
+# 2.4 Demographic model setup and abundance estimation
+In order to optimize the utility of the available data, the selected abundance estimation method reflects a compromise between spatially-explicit models and more traditional mark-recapture models, which do not typically account for spatio-temporal heterogeneity in individual location or experimental design. We used a POPAN model, stratified within each stock according to gaps in observations or significant bathymetric/geographic changes that affect how protected nearshore habitat is. Individuals were assigned to a subarea stratum based on their first sighting location; individual capture histories included all subsequent sightings of the individual regardless of observation location. Because subarea stratification requires knowledge of an individual's location, individuals that have no associated GPS data across all encounters were excluded from POPAN analyses.
+
+Population abundance analyses roughly follow @Bradford2018. Estimation was undertaken using the RMark/MARK package [@Laake2014; @White1999] in R v3.6.1 [@RCoreTeam2016], using the POPAN [@Schwarz1996] implementation of a Jolly-Seber model [@Jolly1965; @Seber1965], which estimates the abundance of a hypothetical super-population that includes all individuals that ever enter into the population. We used year as the sampling period and ignored re-sightings within each year. Because sampling effort varied among years and stocks, abundance estimates were only attempted for each stock in the years when that stock was sampled. POPAN estimates four parameters: apparent survival ($\phi$), capture probability ($p$), probability of entry into the population ($\beta$), and super-population size ($N$). We used a logit link function to model $\phi$ and $p$, a multinomial logit link function to model $\beta$, and the log link function to model $N$. 
+
+The POPAN model assumes 1) unique, permanent, and correctly identified markings on all distinctive individuals, 2) homogeneous apparent survival probability, 3) homogeneous capture probability, 4) independent probability of capture and apparent survival, 5) instantaneous sampling, and 6) constant sample area. The first two assumptions are met by the data in this study. To meet the first assumption, we use only good- and excellent-quality photos (photo quality score 3-4) and distinctive and very distinctive individuals (individual distinctiveness 3-4) in the models. The third assumption, that of homogeneous capture probability, is likely true with respect to marked vs. unmarked individuals. The additional spatio-temporal variability in capture probability, driven by ecological and individual differences in habitat use within each stock, was addressed by subdividing stocks into subareas and estimating capture probability and probability of entry into the stock within each subarea. The fourth assumption, independent probability of capture and apparent survival, could be violated by social associations among individuals or by learned habitat preferences. This assumption is also partially addressed by subdividing stocks to control for geographic bias in sampling. The fifth and sixth assumptions were violated by weather and logistical constraints to sampling, which caused sampling effort to vary spatially and in duration each year. In order to minimize variability in sampling effort we used one year as the sampling period. This violates the assumption of instantaneous sampling, but the violation can be addressed by allowing capture probability ($p$) to vary with time [@OBrien2005]. 
+
+For resident populations of bottlenose dolphins, an additional source of potential bias in abundance estimates comes from visits from non-resident individuals, which may artificially inflate the estimated abundance of the resident population [@Rosel2011; @Pradel1997]. In this study, we rely on a long-term dataset with multiple samples per year to improve our ability to identify resident vs. non-resident individuals, based on assessment of factors such as location (based on depth) at which the animals were encountered, animal size, and social connectivity with the resident population. We excluded one group from the analyses thought to be part of the offshore population, based on these factors, and discuss results from social network analyses relevant to the likelihood of additional non-resident individuals being included in the sample.
+
+For each stock, model-estimated capture probability ($p$) and probability of entry ($\beta$) were allowed to either be constant or vary by year, subarea, or subarea*year. Super-population size ($N$) was set to vary by subarea. Apparent survival ($\phi$) was held constant in each stock, as published estimates for apparent survival in bottlenose dolphin populations indicate that this parameter is not likely to vary across years [@Carretta2016a]. This resulted in 16 different models tested within each stock. The optimal model was selected by minimizing $AIC_c$, a version of Akaike's Information Criterion corrected for small sample size [@HURVICH1989; @Akaike1998]. Model goodness-of-fit was estimated using RELEASE [@burnham1987] to estimate a variance inflation factor ($\hat{c}$). For each stock, $\hat{c}$ greater than 1 indicated over-dispersion in that stock, which was corrected for before model selection and parameter estimation by computing quasi-$AIC_c$ ($QAIC_c$) [@Anderson1994] and multiplying all variances estimates by $\hat{c}$.
+
+Parameter estimates were averaged across all models proportional to their $AIC_c$ weight to account for model uncertainty. Model-averaged annual abundances ($N_i$, $i =$ `r paste(min(capdat$year), min(capdat$year)+1, min(capdat$year)+2, "...", max(capdat$year), sep=", ")`), standard error ($SE$), and 95% CI for each stock around the main Hawaiian Islands were estimated using popan.derived in RMark.
+
+We then corrected estimates of $N_i$ and 95% CI for the stock-specific proportion of distinctive individuals in each stock ($\theta$) based on the mean proportion of distinctive individuals in each encounter. Within each stock, we calculated $\theta = n_{dist3,4}/n_{total}$ where $n_{dist3,4}$ is the number of distinctive or very distinctive individuals documented during an encounter with a group of bottlenose dolphins, and $n_{total}$ is the total number of individuals documented during an encounter with a group of bottlenose dolphins. Both $n_{dist3,4}$ and $n_{dist3,4}$ were calculated using only the best quality photos (photo quality of 3 or 4). We restricted this analysis to include only encounters with groups of four or more documented individuals, so that the proportion would not be biased by small group sizes [@Bradford2018]. For estimates of stock-specific $\theta$, we used only the subset of the data that was collected by CRC, because standard CRC field protocol is to photograph all individuals regardless of size or distinctiveness to minimize bias in individual documentation. The final abundance estimate for each population each year is $$N_{ij} = \frac{n_{ij}}{\theta p_{ij}}$$ where $n_{ij}$ is the observed count of animals in year $i$ in stock $j$. Variance around $N_i$ was estimated using the delta method from @Seber1982, as described by @Bradford2018, and used to estimate confidence intervals following @burnham1987. 
+
+# 2.5 Estimating confidence in population trends
+Finally, we tested the trends estimated in this study by randomly generating one abundance estimate per year from within the POPAN-derived, delta method-corrected confidence intervals for annual abundance within each stock, and fitting a linear regression to the randomly generated abundance estimates. This was repeated 10,000 times, and we used the distribution of regression slopes for each stock to calculate the 95% confidence intervals of population trends for each stock.
+
+This process was repeated for all stocks combined, using only years in which an estimate was made for all stocks (n = `r nrow(Ntot)` years), in order to understand the trajectory of abundance trends at a metapopulation level for stocks in the main Hawaiian Islands.
+
+<br>
+
+
+## 3. RESULTS
+During the entire study period, `r format(nrow(numind), big.mark = ",")` individuals were identified across all four stocks in the main Hawaiian Islands, for a total of `r format(nrow(numobs), big.mark = ",")` individual sightings. `r paste(toupper(substr(as.character(english(numpel$n)),1,1)), substr(as.character(english(numpel$n)), 2, nchar(as.character(english(numpel$n)))), sep="")` individuals were determined to be from an offshore population and removed. Eight of these were identified on a single encounter off `r paste0("Hawai\u02BBi")` Island, in water >3000 m deep, were observably larger than residents of the Hawaiian population, and had no social connection with any Hawaiian stocks [@Baird2016a, Cascadia Research Collective unpublished data]. An additional 19 were observed around Kaula Rock, offshore of `r paste0("Ni\u02BBihau")` and outside the boundaries for any of the stocks. The final individual was identified during a NOAA offshore survey. Additionally, 26 individuals that were encountered during a NOAA survey of the windward side of `r paste0("Hawai\u02BBi")` Island were removed due to inconsistent sampling of this region.  Once preliminary quality control filtering was completed, the final dataset comprised `r format(nrow(capdat), big.mark = ",")` observations of `r length(unique(capdat$ID..))` individuals, with a median of `r med.sight` observations per individual. 
+
+However, `r onex.dat` of the individuals in the dataset were observed on only a single occasion. In three of the four stocks, sampling differed significantly from random (`r fig.nums('rand.test',display='cite')`). Further, our test of individual inter-annual travel distance indicated that, in all stocks, individuals occupy a significantly smaller portion of the available habitat than expected (`r fig.nums('ind.travel',display='cite')`). Because sampling effort varied spatially within each stock, this variability in habitat use is likely a cause of the non-random sampling pattern detected in the dataset. 
+
+Non-random sampling was partially accounted for by subdividing stocks spatially (`r fig.nums('stock.strata', display = 'cite')`A); annual abundance estimates in each subarea are based only on years with observations in that subarea. Subdividing stocks resulted in two to four subareas within each stock. `r paste(toupper(substr(as.character(english(num.nogps)),1,1)), substr(as.character(english(num.nogps)), 2, nchar(as.character(english(num.nogps)))), sep="")` individuals were never associated with a GPS location throughout the study period and therefore could not be assigned a subarea and were removed from POPAN abundance estimates. Individuals with known locations were re-sighted in the same subarea as their original sighting during `r format(meanprob.sub*100, digits=0)`% of re-sights. A small number of individuals (n = `r MnOinds`) were encountered in both Maui Nui and `r paste0("O\u02BBahu")` (Table 1); these individuals were incorporated into the estimate for the stock where they were first observed. The number of encounters in the curated dataset differed considerably by stock and subarea over the study period (Table 1, Supplemental Figure S1). Stratifying by subareas within stocks revealed subareas where sampling deviated from random, including one subarea in Maui Nui and both subareas in `r paste0("Hawai\u02BBi")` and `r paste0("O\u02BBahu")` (`r fig.nums('stock.strata', display = 'cite')`B). 
+
+Discovery curves are approaching an asymptote in `r paste0("Kaua\u02BBi/Ni\u02BBihau")`, `r paste0("O\u02BBahu")`, and Maui Nui, suggesting that a large portion of the population has been sampled over the cumulative sampling period (`r fig.nums('accum.rare',display='cite')`A). In `r paste0("Hawai\u02BBi")`, the discovery curve still approximates 1:1 due to multiple large influxes of individuals late in the study period. This includes 29 new individuals that were added in 2012, resulting in a large jump in the discovery curve, 19 of which were seen at least once in later years. Subdividing stocks revealed subareas within each stock that have been sampled fewer times and thus are not as close to reaching an asymptote, including two subareas in `r paste0("Kaua\u02BBi/Ni\u02BBihau")` and one each in Maui Nui, `r paste0("Hawai\u02BBi")`,  and `r paste0("O\u02BBahu")` (`r fig.nums('accum.rare',display='cite')`B). Goodness-of-fit testing indicated overdispersion of the data with respect to the model in all stocks (Table 2), and model fit was adjusted by $\hat{c}$.
+
+Of the 16 models tested within each stock, the optimal model allowed capture probability to vary by year and subarea in `r paste0("Kaua\u02BBi/Ni\u02BBihau")` and Maui Nui, with $\ge$ 99% of the $QAIC_c$ weight for these stocks (Table 2). Capture probability varied by time only in the optimal model for `r paste0("O\u02BBahu")`, with 76% of the model weight, and `r paste0("Hawai\u02BBi")`, with 99% of the model weight. Probability of entry varied by subarea in the optimal model for all stocks.
+
+Model-averaged capture probability varied widely among years and subareas, averaging `r format(mean(all_model_p[which(all_model_p$Stock =="Maui Nui"),"estimate"]), digits = 2)` (95% CI `r format(min(all_model_p[which(all_model_p$Stock =="Maui Nui"),"estimate"]),digits = 2)` - `r format(max(all_model_p[which(all_model_p$Stock =="Maui Nui"),"estimate"]),digits =2)`) in Maui Nui, `r format(mean(all_model_p[which(all_model_p$Stock =="Oahu"),"estimate"]), digits = 2)` (95% CI `r format(min(all_model_p[which(all_model_p$Stock =="Oahu"),"estimate"]),digits = 2)` - `r format(max(all_model_p[which(all_model_p$Stock =="Oahu"),"estimate"]),digits =2)`) in `r paste0("O\u02BBahu")`, `r format(mean(all_model_p[which(all_model_p$Stock =="Hawaii"),"estimate"]), digits = 2)` (95% CI `r format(min(all_model_p[which(all_model_p$Stock =="Hawaii"),"estimate"]),digits = 2)` - `r format(max(all_model_p[which(all_model_p$Stock =="Hawaii"),"estimate"]),digits =2)`) in `r paste0("Hawai\u02BBi")`, and `r format(mean(all_model_p[which(all_model_p$Stock =="Kauai/Niihau"),"estimate"]), digits = 2)` (95% CI `r format(min(all_model_p[which(all_model_p$Stock =="Kauai/Niihau"),"estimate"]),digits = 2)` - `r format(max(all_model_p[which(all_model_p$Stock =="Kauai/Niihau"),"estimate"]),digits =2)`) in `r paste0("Kaua\u02BBi/Ni\u02BBihau")` (Supplemental Table S1). Apparent survival ($\phi$) estimates ranged from `r format(min(all_model_phi$estimate), digits =2)` to `r format(max(all_model_phi$estimate), digits = 2)` (Table 3), with the highest apparent survival in the `r paste0("Kaua\u02BBi/Ni\u02BBihau")` and `r paste0("Hawai\u02BBi")` stocks and lowest apparent survival in `r paste0("O\u02BBahu")`.
+
+The proportion of individuals with high quality photos (quality $\ge$ 3, mean `r format(mean(goodphotosummary$mean, na.rm = TRUE)*100,digits = 2)`% of total photos in an encounter), calculated using only the subset of the data collected by CRC, did not vary significantly across years (ANOVA p = `r round(summary(photoqualitytest)[[1]]$'Pr(>F)'[1], digits = 2)`), but did vary by stock (ANOVA p `r ifelse(summary(photoqualitytest)[[1]]$'Pr(>F)'[2] < 0.0001, "< 0.0001", paste("=",round(summary(photoqualitytest)[[1]]$'Pr(>F)'[2], digits = 3)))`). The proportion of distinctive animals in an encounter, calculated using the same subset of data collected by CRC, did vary across years (ANOVA p `r ifelse(summary(propdisttest)[[1]]$'Pr(>F)'[2] < 0.0001, "< 0.0001", paste("=",round(summary(propdisttest)[[1]]$'Pr(>F)'[2], digits = 2)))`) as well as among stocks (ANOVA p = `r ifelse(summary(propdisttest)[[1]]$'Pr(>F)'[1] < 0.001, "< 0.001", round(summary(propdisttest)[[1]]$'Pr(>F)'[2], digits = 3))`). Values for mean and variation in the proportion of distinctive individuals across encounters ($\theta$) used to adjust abundance estimates and confidence intervals are reported in Table 4.
+
+Abundance estimates indicate annual growth rates of `r paste0(c(paste0(format(mean_growth$Mean_growth[1:3], digits = 2), collapse = ", "), ", and ", format(mean_growth$Mean_growth[4], digits = 2)), collapse = "")` per cent respectively in `r paste0(c(paste0(mean_growth$Stock[1:3], collapse = ", "), ", and ", mean_growth$Stock[4]), collapse = "")` (Table 5, `r fig.nums('annual.abun',display='cite')`). Because confidence intervals are wide for all stocks, actual growth rates may be smaller or larger. 95% confidence intervals for the slope of population trends in each stock were `r paste0(format(stock_slopes_ci[1,], digits = 2), collapse = " to ")`, `r paste0(format(stock_slopes_ci[2,], digits = 2), collapse = " to ")`, `r paste0(format(stock_slopes_ci[3,], digits = 2), collapse = " to ")`, and `r paste0(format(stock_slopes_ci[4,], digits = 2), collapse = " to ")` in `r paste0("Kaua\u02BBi/Ni\u02BBihau")`, `r paste0("O\u02BBahu")`, Maui Nui, and `r paste0("Hawai\u02BBi")`, respectively. When the main Hawaiian Island population trend is considered, for years in which abundance estimates were calculated in all stocks, the 95% confidence interval for the slope of population growth is `r paste0(format(pop_slope_ci, digits = 2), collapse = " to ")`.
+
+<br>
+
+
+## 4. DISCUSSION
+# 4.1 Bottlenose dolphin stocks around the main Hawaiian Islands appear to be declining
+Our results indicate lower-than-expected apparent survival rates in all stocks of bottlenose dolphins in the main Hawaiian Islands[@Carretta2016a], and point estimates indicate a negative trend in abundance in three of the four stocks, although evidence is not conclusive of a decline. Abundance estimates for the `r paste0("Hawai\u02BBi")` stock, representing the leeward side of the island, increased over the study period. Although these abundance estimates and trends represent the best available data, they should be interpreted with caution as the results may be driven by biases in study design, which are discussed in the next section.
+
+This is the second abundance estimate for stocks of bottlenose dolphins in the main Hawaiian Islands, and the first attempt to understand temporal trends in population sizes of these stocks. The dataset used for these estimates builds upon the dataset used for the abundance estimates published in 2009 [@Baird2009]. For the period before 2006, our POPAN abundance estimates roughly correlate with the original estimates published in @Baird2009, calculated using a closed Lincoln-Petersen model, with the exception of the `r paste0("O\u02BBahu")` stock. In that stock, our abundance estimates are considerably lower than those from Baird et al. [-@Baird2009]. In that study, the authors indicated that estimates from the `r paste0("O\u02BBahu")` stock may be inflated due to (1) low individual sample size, (2) small number of encounters, (3) small number of sample years included in the study, and therefore (4) small number of resights, although the 2009 study also took into consideration the possibility that some of the sampled groups came from an offshore stock [@Baird2009]. Adding additional years to the study and increasing the number of resights has decreased abundance estimates in early years. In the remaining three stocks, the estimates from this study concur with those from the 2009 study, albeit based on largely overlapping datasets. 
+
+Bottlenose dolphins inhabit the protected, shallow, nearshore waters off the main Hawaiian Islands, and as such they regularly interact with humans using the same areas for a variety of activities, including dolphin watching tourism, fishing, recreational boating, shipping, and Naval activities. These activities increase cumulative noise interference, resource competition, and risk of injury or death for all species that rely primarily upon the same habitat. They must also contend with habitat degradation and contaminant loading generated by the large coastal populations living on the islands, and face an elevated risk of ingestion or entanglement in marine debris, especially plastics from land-based activities [@Currie2017]. Relatively little is known about the effects of these activities on stocks of bottlenose dolphins specifically, but they likely face threats similar to better studied highly mobile marine species, such as other odontocetes, sea turtles, and monk seals. From these studies, major risk factors include exposure to pathogens (both natural and anthropogenic) and contaminants [e.g. @Lopez2012; @Bachman2014; @Barbieri2018; @Littnan2006; @Kratofil2020], and interactions between the two [@AlonsoAguirre1994], as well as trauma related to fishing gear and boat strikes [e.g. @Chaloupka2008; @McCracken2010; @Baird2016a]. These effects may vary spatially according to individual or group-specific variability in ranging behavior, so that the cumulative impact to an individual is highly dependent on its spatial use [@Baird2016a]. For example, bottlenose dolphins inhabiting the leeward waters of `r paste0("Hawai\u02BBi")` Island are likely to be heavily impacted by recreational vessels and fishing, while the `r paste0("O\u02BBahu")` stock is likely heavily impacted by noise from shipping activity [@Baird2016a], and the `r paste0("Kaua\u02BBi/Ni\u02BBihau")` stock overlaps spatially with Naval activities to the northwest of `r paste0("Kaua\u02BBi")` [@Baird2017a]. The impact of these activities on nearshore stocks of dolphins and whales is unknown; the present study indicates a possible long-term negative trend in abundance across the main Hawaiian Island meta-population of bottlenose dolphins (95% CI of slope of population growth: `r paste0(format(pop_slope_ci, digits = 2), collapse = " to ")`), which may be correlated with nearshore habitat degradation by anthropogenic activities.
+
+Abundance estimates for all stocks in this study range from the 10s to low 100s, with confidence intervals indicating some stocks may have an abundance up to 400 individuals. This relatively low abundance has been documented in stocks of bottlenose dolphins off multiple remote islands or archipelagos [e.g. @Estrade2020; @Milmann2017; @Silva2009], which act as productive hotspots in otherwise oligotrophic areas of the ocean, as well as some less remote islands [@Brereton2018]. Population sizes of approximately 100 individuals are relatively common among stocks of bottlenose dolphins with well-defined, restricted ranges and a high degree of site fidelity, in both island-associated and coastal habitats [@Silva2009; @Wilson1999; @Ingram2002]. Based on a line-transect survey in 2003, Barlow [-@Barlow2006] estimated approximately 465 individuals in the main Hawaiian Island meta-population, which may be equivalent to roughly 100-150 individuals per stock in 2003. 
+
+# 4.2 Caveats to estimates of abundance and trends
+
+While there were negative trends in both the `r paste0("Kaua\u02BBi/Ni\u02BBihau")` and `r paste0("O\u02BBahu")` stocks, the annual estimates did not differ significantly throughout the study, therefore the trends cannot be considered reliable. Significant declines were found in the Maui Nui  stock; however, the geographic range of sightings varied greatly on an annual basis and contracted over the study period in both the Maui Nui and `r paste0("O\u02BBahu")` stocks (Supplemental Figures S2 and S3), which may have affected model estimates of annual abundance and apparent survival, as well as confidence intervals. The effect of this is apparent in the discovery curves (Figures 4A and 4B), which show that the apparent flattening of the curve for each stock is driven primarily by sampling in one subarea, while the second subarea in each stock is truncated due to small sample size, and has an approximate relationship of 1:1. In both stocks, the number of individuals sighted annually did not change appreciably over the study period (Table 5) although the number of sightings increases dramatically in recent years, indicating a large number of resights of the same individuals. This is reflected in the increase in capture probability over time in both stocks (Supplemental Table S1), and results in a smaller abundance estimate over time. A lack of associated effort data makes it unclear whether the increase in capture probability is due to resampling within a smaller portion of the range of the stock, or whether the stock has in fact decreased in abundance and range over time. Further, in the `r paste0("O\u02BBahu")` stock, the optimal POPAN model considered only annual variance when estimating capture probability (Table 2), even though individual habitat use is significantly smaller than the entire range of the stock (Figure 2), indicating that survey effort likely covered only a portion of the stock range. Contracted survey effort in these two stocks will affect model fit, so that these estimates may reflect only a portion of the total stock, especially in later years. Although survey effort was more consistent in the `r paste0("Kaua\u02BBi/Ni\u02BBihau")` stock, annual variability due to weather or funding constraints likely had a similar effect on model estimated abundance and apparent survival.
+
+Although confidence intervals were large for the `r paste0("Hawai\u02BBi")` stock, indicating that the population may not be growing at the rate estimated by the model, our estimate of 95% confidence intervals for trend indicate that it is unlikely the stock is declining. The mean annual growth of `r paste0(format(mean_growth$Mean_growth[1], digits = 3))`% in this stock is greater than the species' maximum expected growth rate of 4%, and was driven primarily by the discovery of new individuals in the early part of the survey (2002 - 2007), as well as influxes of a relatively large number of new individuals in 2012 that may represent an immigration event, as most individuals were resighted later in the study. 
+
+Survey effort off `r paste0("Hawai\u02BBi")` Island was focused on the leeward side of the island during this study; therefore abundance estimates only considered observations made on the leeward side of the island and are likely underestimates of true stock abundance. On the windward side, `r sum(hawaiiwindeffort$Sightings)` observations were made of `r sum(hawaiiwindeffort$Individuals)` distinct individuals over the study period, `r hawaiiwindeffort$Sightings[2]` of which were obtained during a `r hawaiiwindeffort$year[2]` survey conducted by the Pacific Islands Fisheries Science Center. Of the `r sum(hawaiiwindeffort$Individuals)` individuals, `r as.english(hawaiiwindIndresight)` were observed at least twice over the survey period, with one individual observed three times. Of those, four were resighted in subarea HA, and two in subarea HB. In order to conduct nonbiased assessments of abundance and trends on the windward side of `r paste0("Hawai\u02BBi")` Island it will be necessary to increase survey effort in that region.
+
+Survey effort was lower on the windward side of all islands compared to the leeward side; therefore, we suggest that regular surveys on the windward side of each of the Hawaiian Islands may increase abundance estimates for all stocks. However, increasing survey effort off the windward side of the islands - or increasing survey effort more generally to achieve a more consistent spatio-temporal sampling effort - is likely to inflate trend estimates going forward, due to the likelihood that increased spatial coverage will increase the number of individuals observed. Simuluation studies will be necessary to understand the impact of increased sampling effort before comparing current abundance estimates with any future estimates based on increased survey effort.
+
+An additional source of potential variability comes from the possibility for inclusion of individuals from the offshore stock or other potential island-associated stocks (e.g. from the Northwestern Hawaiian Islands), which has the potential to artificially inflate abundance estimates and increase confidence intervals around annual estimates. When offshore groups are seen only once, their inclusion in the dataset can artificially decrease estimated apparent survival rates and increase abundance estimates as well as the uncertainty around those estimates. While the authors consider all animals included in the study to be part of one of the four main Hawaiian Island stocks based on their sighting location and size, network analysis of long-term photo-ID datasets have revealed that some individuals are not socially connected with the resident populations. Overall, 15.42% (n = 128) of individuals in the dataset are not associated with main Hawaiian Island social networks (CRC unpublished data), mostly in the `r paste0("O\u02BBahu")` and Maui Nui stocks. Of these, 118 individuals (97%) were observed on a single occasion. This suggests the possibility for some influence from offshore groups that has not yet been accounted for, although social connectivity alone is not sufficient to determine which individuals are not part of a stock. Alternatively, in the `r paste0("O\u02BBahu")` and Maui Nui stocks in particular this pattern may indicate additional population structure that has not yet been described. As above, consistent annual to semi-annual sampling would improve the ability to identify and remove any offshore individuals, thus reducing uncertainty in estimates of apparent survival, abundance, and annual trends.
+
+# 4.3 Bottlenose dolphins exhibit habitat preferences within stocks
+Often, coastal areas are co-inhabited by resident and transient populations of bottlenose dolphins, which can confound mark-recapture abundance estimates by violating the assumption that marked animals do not emigrate [e.g. @Conn2011; @Silva2009], which can negatively bias apparent survival [@Pradel1997]. In our case, only a small proportion of marked individuals were determined not to be part of one of the four Hawaiian stocks, and these were removed from the study before model fitting. 
+
+Rather, we found that individuals tended to have a smaller home range than the entire available habitat within each stock, indicating strong site fidelity within populations. The strongest spatial heterogeneity in individual habitat use was found in Maui Nui, where individual interannual movements were as much as 10 km (> 30%) less than would be expected in a randomly mixing stock (`r fig.nums('ind.travel',display='cite')`), and the second largest difference was found off `r paste0("Hawai\u02BBi")` Island. However, data from one bottlenose dolphin satellite tagged off `r paste0("Kaua\u02BBi")` over a period of 34 days shows that movements over a large proportion of the stock range are possible in a relatively short period of time [@Baird2012]. 
+
+Spatial heterogeneity in individual habitat use, as well as variability in individual degree of residency, is common in bottlenose dolphin populations, and has been exhibited at various scales within stocks [e.g. @Forcada2004; @Haughey2020]. While this pattern of restricted habitat use has been observed in other island-associated bottlenose dolphin populations [e.g. @Milmann2017], other studies have found that some individuals will emigrate temporarily, returning to the island after multiple months [e.g. @Dinis2016; @Estrade2020; @Silva2009], indicating that the island may be part of a larger habitat range. It is possible that behaviors such as movement and residency patterns, or habitat preferences, are another learned behavior in this species, which has been shown to learn various other kinds of behaviors [e.g. @Krutzen2014; @Sargeant2005; @Krutzen2005; @Reiss1993; @McCowan2000]; social learning of these behaviors would contribute to the spatial heterogeneity observed within stocks in this study.
+
+This heterogeneity in habitat use, combined with annual variability in survey effort, is likely to negatively bias apparent survival estimates. Weather-driven or funding-related variability in spatial coverage within stock boundaries led to a disproportionate number of individuals encountered once during the course of the study. Because the POPAN formulation of the Jolly-Seber mark-recapture model does not distinguish between permanent emigration and death, a large number of individuals seen only once will artificially inflate model estimates of emigration/death and decrease apparent survival in each stock [@Pradel1997]; this is the effect of transient populations, but can also cause bias if a region within the study area is sampled only once or a few times. Low apparent survival estimates in all stocks in this study are likely driven at least in part by non-random sampling, and offset by allowing the probability of entry to vary by subarea. Subdividing stocks into subareas helped identify subareas that are well sampled, and others where additional sampling would improve model estimates of abundance and apparent survival. Because POPAN assumptions of homogeneous capture probability, independent probability of capture, and constant sample area are sensitive to annual heterogeneity in survey design and individual habitat use, it is likely that continued effort in poorly sampled regions would improve estimates of apparent survival, as well as decrease confidence intervals in future estimates of annual abundance. 
+
+# 4.4 Consistent sampling is important to understanding population trends
+These abundance estimates were possible due to approximately annual surveys of each stock since 2000, as well as the invaluable contributions of citizen scientists. Without this survey effort in the nearshore Hawaiian Island habitat, it would not have been possible to assess trends in the population demographics of the four stocks in the region. Within each stock, the total number of encounters was significantly increased by the efforts of citizen scientists and research organizations collaborating with CRC and PWF by sharing ID photos of their encounters. In Maui Nui and `r paste0("O\u02BBahu")`, these efforts increased the geographic range of the sampling area to include islands unsurveyed by CRC. Our understanding of the `r paste0("O\u02BBahu")` stock is largely driven by citizen scientist contributions, which make up the bulk of our observations from this region.
+
+However, logistical constraints to that effort, most notably due to funding and weather (including a leeward sampling bias due to consistent high winds on the windward side of each island), affect geographic coverage within stocks from year to year. This variability in effort introduces uncertainty into estimates of demographic parameters such as abundance and trends in abundance over time. For example, the large annual variation in capture probability among subareas in this study likely reflects differences in survey effort in each year, although this correlation cannot be tested directly because effort data are not available from all citizen scientist survey effort, and because CRC surveys were not restricted to bottlenose dolphin habitat. Managers should take uncertainty due to logistical constraints on survey effort into consideration when using the present study to inform stock assessments or management plans, and future work should aim to include consistent sampling of the entire bottlenose dolphin habitat within all four stocks on an annual to semi-annual basis (defined in `r fig.nums('stock.strata', display = 'cite')`A).
+
+# 4.5 Management considerations
+The estimates of bottlenose dolphin abundance presented here, based on the best data currently available, indicate a strong likelihood that three out of four bottlenose dolphin stocks in the Hawaiian Islands are currently in decline. Although there are biases to the study design that most likely affected these estimates, a conservative approach to management will incorporate these estimates and trends into their management plans as the best available data. Concurrently, managers should look to secure funding directed specifically at addressing the biases described here, so that future management plans may be based on data with a higher degree of confidence. 
+
+<br>
+
+*Acknowledgements* We thank the many citizen scientists who have contributed photos to Cascadia Research Collective to make this project possible, as well as the members of CRC's field team and volunteers who have worked on this project since 2000. We also thank the many field team members and both the staff and volunteers at Pacific Whale Foundation who contributed to this project over the years. Paul Johnson, Dan McSweeney, the Hawaiian Island Humpback Whale National Marine Sanctuary, NMFS Pacific Island Fisheries Science Center, Mark Deakos, and Chuck Babbitt all made between 50 and 100 contributions to this study. Field efforts were funded by grants and contracts from the National Marine Fisheries Service (Southwest Fisheries Science Center, Pacific Islands Fisheries Science Center, Protected Resources Program, Bycatch Reduction Engineering Program), the US Navy (Office of Naval Research, Living Marine Resources, Pacific Fleet), the Wild Whale Research Foundation, and the Tides Foundation, as well as members and supporters of Pacific Whale Foundation. Research was undertaken under permit numbers 731-1509, 731-1774, 15330 and 20605 issued to Robin W. Baird and LOC 13427 and 18101 issued to Pacific Whale Foundation. Photo-ID  matching was assisted by a number of CRC and PWF interns and volunteers. We thank Jeff Laake, Alex Curtis, Amanda Bradford, Jim Carretta, and Tomo Eguchi for their valuable input on the analysis of the present dataset.
+
+##### Page
+
+## LITERATURE CITED
+<div id="refs"></div>
+
+##### Page
+
+```{r sub.enc, warning=FALSE}
+library(pander)
+panderOptions('table.split.table', 150)
+panderOptions('big.mark', ",")
+panderOptions("table.style", "simple")
+panderOptions('table.split.cells', 60)
+pander(sub.enc, caption = paste0("Table 1. Number of encounters by subarea within each stock, number of individuals identified in each subarea, and the range of years of coverage in each subarea. Individuals were assigned a subarea based on their first sighting location; a small number of individuals were observed in both Maui Nui and O\\u02BBahu. CRC = Cascadia Research Collective, PWF = Pacific Whale Foundation, other = citizen scientist contributions."))
+```
+
+
+##### Page
+
+
+```{r modelsummary, warning=FALSE}
+set.alignment(default=c('left','center','center','center','center','center'),row.names = 'left', permanent = TRUE)
+colnames(all_model.results)[2] <- "$\\beta$"
+colnames(all_model.results)[9] <- "$\\hat{c}$"
+colnames(all_model.results)[5] <- "Delta AICc"
+pander::pander(format(all_model.results, digits = 2), caption = "Table 2. Model AICc and weight from the models with weight > 0.0001 within each island stock. Lowest AICc indicates the optimal model, but all models were averaged by their weight to account for model uncertainty. Because all models were corrected for overdispersion ($\\hat{c}$ > 1), AICc, Delta AICc, and Deviance are quasi-estimates.  ")
+
+```
+
+
+##### Page
+
+
+```{r parameter_summary}
+pander(all_model_phi, caption = "Table 3. Model-averaged estimates and standard error (se) of apparent survival ($\\bar\\phi$) within each stock.", style = "multiline", digits = 2, split.tables=100)
+```
+
+
+##### Page
+
+
+```{r prop.dist, warning=FALSE}
+pander(format(all_pd, digits=2), caption = "Table 4. Mean and variance of the proportion of distinctive individuals ($\\theta$) in encounters within each stock, used to correct POPAN estimates of the abundance of distinctive animals based on the Delta method.", digits = 2)
+```
+
+
+##### Page
+
+
+```{r resultssummary, warning=FALSE}
+pander(all_total_abundance, caption = "Table 5. Estimated annual abundance ($N_i$), with standard error (se) and upper and lower confidence intervals (UCL and LCL) within each island stock. Numbers reported in this table have been corrected for the proportion of distinctive individuals in each stock.", style = "multiline", digits = 2, split.tables=80)
+```
+
+
+##### Page
+
+
+```{r random.sample.test, warning=FALSE, echo=FALSE, fig.cap=fig.nums('rand.test'), fig.height = 10}
+legend <- get_legend(stockplot.list[[1]])
+for (j in 1:length(stockplot.list)){
+  stockplot.list[[j]] <- stockplot.list[[j]] + 
+    theme(legend.position = "none") +
+    theme(axis.text.x=element_text(colour="black"))}
+
+grid.arrange(arrangeGrob(stockplot.list[[1]], stockplot.list[[3]]),
+             arrangeGrob(stockplot.list[[2]], stockplot.list[[4]]), 
+             legend, ncol=3, widths = c(2.3,2.3,1.4),
+             left = textGrob("Density", rot = 90, vjust = 2, hjust = -0.2, gp=gpar(fontsize=20)),
+             bottom = textGrob("Mean # observations", vjust = -1, hjust = 0.7, gp=gpar(fontsize=20)))
+```
+
+
+##### Page
+
+
+```{r individual.movement, warning=FALSE, echo=FALSE, fig.cap=fig.nums('ind.travel'), fig.height = 10}
+legend <- get_legend(plot.list[[1]])
+for (j in 1:length(plot.list)){
+  plot.list[[j]] <- plot.list[[j]] + 
+    theme(legend.position = "none") +
+    theme(axis.text.x=element_text(colour="black"))}
+
+grid.arrange(arrangeGrob(plot.list[[1]], plot.list[[3]]),
+             arrangeGrob(plot.list[[2]], plot.list[[4]]), 
+             legend, ncol=3, widths = c(2.3,2.3,1.4),
+             left = textGrob("# individuals", rot = 90, vjust = 2, hjust = -0.2, gp=gpar(fontsize=20)),
+             bottom = textGrob("Mean interannual movement distance", vjust = -1, hjust = 0.7, gp=gpar(fontsize=20)))
+```
+
+
+##### Page
+
+
+```{r stock.groups, warning=FALSE, echo=FALSE, fig.height = 7, message = FALSE, results = 'hide'}
+mapdat$subarea <- factor(mapdat$subarea, levels=c("KA","KB","KC","KD","OA","OB","MA","MB","HA","HB"))
+setwd("C:/Users/Amy/Google Drive/05 CRC/01 Tursiops abundance/Bottlenose_n=4")
+Mnlines <- st_read("C:/Users/Amy/Google Drive/05 CRC/01 Tursiops abundance/Bottlenose_n=4/Bottlenose4Is_line.shp")
+Kalines <- st_read("BottlenoseKaNi_line.shp")
+Hilines <- st_read("BottlenoseBigIs_line.shp")
+Oalines <- st_read("BottlenoseOahu_line.shp")
+
+ggplot(data = coastr) +
+  geom_sf(fill = "grey50", alpha=0.5) +
+  coord_sf(crs = st_crs(4135)) +
+  # geom_sf(Mnlines, mapping = aes(color = "red")) +
+  # geom_sf(Kalines, mapping = aes(color = "red")) +
+  # geom_sf(Hilines, mapping = aes(color = "red")) +
+  # geom_sf(Oalines, mapping = aes(color = "red")) +
+  geom_point(data = mapdat, aes(x=Long, y=Lat, color=subarea))+
+  geom_text(x = -160.3, y = 22.15, label = "KA") +
+  geom_text(x = -159.85, y = 22.3, label = "KB") +
+  geom_text(x = -159.71, y = 21.8, label = "KC") +
+  geom_text(x = -159.15, y = 21.9, label = "KD") +
+  geom_text(x = -158.25, y = 21.8, label = "OA") +
+  geom_text(x = -158.25, y = 21.2, label = "OB") +
+  geom_text(x = -157.5, y = 21.2, label = "MA") +
+  geom_text(x = -157.1, y = 20.5, label = "MB") +
+  geom_text(x = -156.25, y = 20.1, label = "HA") +
+  geom_text(x = -156.15, y = 19.5, label = "HB") +
+  geom_text(x = -158.9, y = 22.3, label = paste0("Kaua\u02BBi/Ni\u02BBihau")) +
+  geom_text(x = -157.6, y = 21.75, label = paste0("O\u02BBahu")) +
+  geom_text(x = -156.3, y = 21.15, label = "Maui Nui") +
+  geom_text(x = -155.1, y = 20.15, label = paste0("Hawai\u02BBi")) +
+  theme_classic(base_size = 14) +
+  labs(tag="A") +
+  theme(legend.position = "none") +
+  scale_color_futurama()
+ 
+```
+
+```{r subarea.rand.test, warning=FALSE, echo=FALSE, fig.cap=fig.nums('stock.strata'), fig.height = 10}
+legend <- get_legend(subplot.list[[1]])
+for (j in 1:length(subplot.list)){
+  subplot.list[[j]] <- subplot.list[[j]] + 
+    theme(legend.position = "none")+
+    theme(axis.text.x=element_text(colour="black"))}
+
+grid.arrange(arrangeGrob(subplot.list[[1]], subplot.list[[3]], subplot.list[[5]], subplot.list[[7]], subplot.list[[9]], 
+                         ncol = 1, left = textGrob("B", gp = gpar(fontsize = 20), y = 0.96, vjust = 0)),
+             arrangeGrob(subplot.list[[2]], subplot.list[[4]], subplot.list[[6]], subplot.list[[8]], subplot.list[[10]],
+                         ncol = 1), 
+             legend, ncol=3, widths = c(2.3,2.3,1.4),
+             left = textGrob("Density", rot = 90, vjust = 2, hjust = -0.2, gp=gpar(fontsize=20)),
+             bottom = textGrob("Mean # observations", vjust = -1, hjust = 0.7, gp=gpar(fontsize=20)))
+```
+
+```{r subarea.dist, warning=FALSE, echo=FALSE}
+# grid.arrange(arrangeGrob(plot.list[[1]], plot.list[[3]], plot.list[[5]], plot.list[[7]], plot.list[[9]], 
+#                          ncol = 1, left = textGrob("B", y = 1, vjust = 0)),
+#              arrangeGrob(plot.list[[2]], plot.list[[4]], plot.list[[6]], plot.list[[8]], plot.list[[10]],
+#                          ncol = 1), 
+#              legend, ncol=3, widths = c(2.3,2.3,0.8),
+#              top = textGrob("Average individual inter-annual travel distance"))
+```
+##### Page
+
+
+```{r ind.accum, fig.width=10, fig.height = 5, warning=FALSE, echo=FALSE}
+library(hrbrthemes)
+ggplot(data=capdatsummary, aes(Cum.Sight,Cum.Original,color=Area)) +
+  geom_line() +
+  theme_classic(base_size = 14) +
+  geom_text(data = . %>%
+              arrange(desc(Cum.Sight)) %>%
+              group_by(Area) %>%
+              slice(1),
+            aes(label = c(paste0("Hawai\u02BBi"), paste0("Kaua\u02BBi/Ni\u02BBihau"), "Maui Nui",paste0("O\u02BBahu"))),
+            position = position_nudge(0.1), hjust = 0, vjust = 1, show.legend = FALSE) +
+  scale_color_futurama(label = c(paste0("Hawai\u02BBi"),paste0("Kaua\u02BBi/Ni\u02BBihau"), "Maui Nui", paste0("O\u02BBahu")))  +
+  geom_abline(color = "grey65") +
+  guides(color=guide_legend(title="Stock")) +
+  coord_cartesian(xlim=c(0, 850), ylim=c(0,200)) +
+  ylab("Cumulative Individuals")+
+  xlab("Cumulative Identifications") +
+  theme(axis.text.x=element_text(colour="black"),
+        axis.text.y=element_text(colour="black")) +
+  labs(tag="A")
+```
+
+
+```{r sub.accum, fig.width=10, fig.height = 5, fig.cap=fig.nums('accum.rare'),warning=FALSE, echo=FALSE}
+capdatsubsum$subarea <- factor(capdatsubsum$subarea, levels=c("KA","KB","KC","KD","OA","OB","MA","MB","HA","HB"))
+bp <- ggplot(data=capdatsubsum, aes(Cum.Sight,Cum.Original,color=subarea)) +
+  geom_line(size=0.7) +
+  theme_classic(base_size = 14) +
+  scale_color_futurama()  +
+  geom_text(data = . %>% 
+              arrange(desc(Cum.Sight)) %>% 
+              group_by(subarea) %>% 
+              slice(1),
+            aes(label = subarea),
+            position = position_nudge(0.1), hjust = 0, vjust = 1, show.legend = FALSE) +
+  geom_abline(color = "grey70", size=0.7) +
+  ylab("Cumulative Individuals")+
+  xlab("Cumulative Identifications") +
+  theme(legend.key.width = unit(0.8,"cm")) +
+  coord_cartesian(xlim=c(0, 825), ylim = c(0,200)) +
+  guides(color = guide_legend(override.aes = list(size = 1.3))) +
+  labs(tag = "B") +
+  theme(axis.text.x=element_text(colour="black"),
+        axis.text.y=element_text(colour="black")) +
+  guides(color=guide_legend(title="Subarea")) +
+  annotate("rect",xmin = 0, xmax = 140, ymin = 0, ymax = 50, alpha = 0.1)
+
+over50sa <- capdatsubsum %>% 
+  filter(Cum.Original > 50) %>% 
+  filter(Cum.Sight > 125) %>% 
+  .$subarea %>% 
+  unique(.)
+
+lp <- ggplot(data=capdatsubsum %>% filter(!(subarea %in% over50sa)), aes(Cum.Sight,Cum.Original,color=subarea)) +
+  geom_line(size=0.8) +
+  theme_classic(base_size = 11) +
+  scale_color_futurama(drop=FALSE)  +
+  geom_text(data = . %>% 
+              arrange(desc(Cum.Sight)) %>% 
+              group_by(subarea) %>% 
+              slice(1),
+            aes(label = subarea),
+            position = position_nudge(0.1), hjust = 0, vjust = 1, show.legend = FALSE) +
+  geom_abline(color = "grey70", size=0.7) +
+  xlim(0,145) +
+  ylim(0,50) +
+  theme(legend.position = "none") +
+  ylab("") +
+  xlab("") +
+  theme(axis.text.x=element_text(colour="black"),
+        axis.text.y=element_text(colour="black")) +
+  guides(color=guide_legend(title="Subarea")) +
+  theme(plot.margin=unit(c(0,0,0,0), "mm"), panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+        panel.background = element_rect(fill="grey95", color = "white"))
+
+bp + annotation_custom(ggplotGrob(lp), xmin = 530, xmax = 840, ymin = -20, ymax = 65)
+```
+
+
+##### Page
+
+
+```{r annual_abundance, fig.height = 10, fig.width = 10, fig.cap = fig.nums('annual.abun'), warning=FALSE}
+abundplot <- list()
+
+for (i in 1:length(subset)){
+  test <- all_total_abundance %>% 
+    filter(Stock == subset[i])
+  
+abundplot[[i]] <- ggplot(data=test, aes(x=as.numeric(year), y=N_i, color=Stock, fill=Stock, group=Stock)) +
+  geom_point() +
+  geom_line() +
+  #geom_abline(slope = t(stock_slopes_ci)[1,i], intercept = t(stock_intercept_ci)[1,i])+
+  #geom_ribbon(aes(x=as.numeric(year),ymin = year*t(stock_slopes_ci)[1,i], ymax = year*t(stock_slopes_ci)[2,i]), fill = "grey70", alpha = 0.6)+
+  geom_errorbar(aes(ymin=LCL,ymax=UCL),alpha=0.6, width=0.2, position=position_dodge(0.2))+
+  xlab("") +
+  ylab("") +
+  #scale_fill_manual(values=c("#69b3a2", "#404080"), labels = c("Hawai‘i", "Kaua‘i/Ni‘hau")) +
+  #scale_color_manual(values=c("#69b3a2", "#404080"), labels = c("Hawai‘i", "Kaua‘i/Ni‘hau")) +
+  scale_color_manual(values=c("black"))+
+  theme_classic(base_size = 18) + 
+  theme(axis.text.x=element_text(angle=90)) +
+  theme(legend.position = "none") +
+  coord_cartesian(ylim=c(0, 400), xlim=c(2000, 2018))+
+  annotate("text", label = paste(ifelse(subset[i] == "Oahu", paste0("O\u02BBahu"),
+                    ifelse(subset[i] == "Kauai/Niihau", paste0("Kaua\u02BBi/Ni\u02BBihau"),
+                           ifelse(subset[i] == "Hawaii", paste0("Hawai\u02BBi"), subset[i])))), x = 2016, y = 400, size = 5)
+}
+
+grid.arrange(arrangeGrob(abundplot[[1]], abundplot[[2]], abundplot[[3]], abundplot[[4]], ncol = 2, 
+                          left = textGrob("Estimated Abundance", rot = 90, vjust = 2, hjust = 0.2, gp = gpar(cex = 1.5)),
+                          bottom = textGrob("Year", hjust = 0, vjust = -1, gp = gpar(cex = 1.5))))
+
+```
+
+## Supplemental Table and Figures
+
+Supplemental Table S1. POPAN-estimated capture probability, by subarea and year, for each bottlenose dolphin stock included in this study.
+
+Supplemental Figure S1. Annual observations by Cascadia Research Collective (CRC), Pacific Whale Foundation (PWF), and citizen scientists ("other") within each stock over the course of the study.
+
+Supplemental Figure S2. Annual locations of encounters included in this study within the Maui Nui stock.
+
+Supplemental Figure S3. Annual locations of encounters included in this study within the `r paste0("O\u02BBahu")` stock.

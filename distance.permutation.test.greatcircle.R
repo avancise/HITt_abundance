@@ -12,10 +12,12 @@ library(rnaturalearthhires)
 library(rgeos)
 library(ggpattern)
 
-#### Test whetherindivdiual inter-annual movement is  ####
-####signiicantly less than stock inter-annual movement####
-####     Written by Amy M. Van Cise                   ####
-##########################################################
+####    Test whetherindivdiual inter-annual movement is      ####
+####  significantly less than stock inter-annual movement    ####
+####             adapted by Amy M. Van Cise                  ####
+#### from code by K. Alexandra Curtis (alex.curtis@noaa.gov) ####
+####              shared on March 6, 2020                    ####
+#################################################################
 
 # create dataframe of individual locations
 locdat <- capdat[,c("ID..","Long","Lat", "Area", "year")] %>% 
@@ -74,15 +76,18 @@ plot.list[[j]] <- ggplot(sight.dist, aes(x=dist, fill=type)) +
   scale_fill_manual(values = c("#404080", "#69b3a2"), labels = c("Simulated data", "Real data")) +
   theme_classic(18) +
   labs(fill="") +
-  xlab(paste(ifelse(subset[j] == "Oahu", "O‘ahu",
-                    ifelse(subset[j] == "Kauai/Niihau", "Kaua‘i/Ni‘ihau",
-                           ifelse(subset[j] == "Hawaii", "Hawai‘i", subset[j]))),
+  xlab("") +
+  ylab("") +
+  annotate("text", label = paste(ifelse(subset[j] == "Oahu", "O\u02BBahu",
+                    ifelse(subset[j] == "Kauai/Niihau", "Kaua\u02BBi/Ni\u02BBihau",
+                           ifelse(subset[j] == "Hawaii", "Hawai\u02BBi", subset[j]))),
              ", ",
              ifelse(permtest$p.value < 0.0001, "p < 0.0001",
-                    paste("p = ", format(permtest$p.value, digits = 2), sep = "")), sep = "")) +
-  ylab("") +
+                    paste("p = ", format(permtest$p.value, digits = 2), sep = "")), sep = ""), 
+           x = Inf, y = Inf, hjust = 1, vjust = 1, size = 7) +
   coord_cartesian(ylim=c(0, 300)) +
-  xlim(5,30)
+  xlim(0,30) +
+  theme(plot.margin=unit(c(0.2,0.2,0.2,0.2), "cm"), legend.text=element_text(size=20))
 
 #bw plot
 # plot.list[[j]] <- ggplot(sight.dist, aes(x=dist, fill=type)) +
@@ -91,13 +96,14 @@ plot.list[[j]] <- ggplot(sight.dist, aes(x=dist, fill=type)) +
 #   theme_bw(18) +
 #   theme(axis.title.x = element_text(hjust = 1)) +
 #   labs(fill="") +
-#   xlab(paste(ifelse(subset[j] == "Oahu", "O‘ahu", 
-#                     ifelse(subset[j] == "Kauai/Niihau", "Kaua‘i/Ni‘ihau",
-#                            ifelse(subset[j] == "Hawaii", "Hawai‘i", subset[j]))),
+#   annotate("text", label = paste(ifelse(subset[j] == "Oahu", "O\u02BBahu", 
+#                     ifelse(subset[j] == "Kauai/Niihau", "Kaua\u02BBi/Ni\u02BBihau",
+#                            ifelse(subset[j] == "Hawaii", "Hawai\u02BBi", subset[j]))),
 #              ", ",
 #              ifelse(permtest$p.value < 0.0001, "p < 0.0001", 
-#                     paste("p = ", format(permtest$p.value, digits = 2), sep = "")), sep = "")) +
+#                     paste("p = ", format(permtest$p.value, digits = 2), sep = "")), sep = ""), x = Inf, y = Inf, hjust = 1, vjust = 1) +
 #   ylab("") +
+#   xlab("") +
 #   coord_cartesian(ylim=c(0, 300)) +
 #   xlim(5,30)
 

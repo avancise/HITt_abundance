@@ -5,13 +5,16 @@ library(magrittr)
 library(tidyverse)
 library(FSA)
 library(dplyr)
+library(mvtnorm)
 
 ####POPAN abundance estimation and parameter summary tables####
 ####            Written by Amy M. Van Cise                 ####
 ###############################################################
 
+#must install MARK separately to run this code
+
 #source code to generatue POPAN input and calculated proportion distinctive animals
-setwd("C:/Users/Amy/Google Drive/00 CRC/01 Tursiops abundance")
+setwd("C:/Users/Amy/Google Drive/05 CRC/01 Tursiops abundance")
 source("RMark_abundance_datainput.R")
 source("Prop_distinctive.R")
 
@@ -26,6 +29,8 @@ all_model.results <- data.frame(p = numeric(), pent = numeric(), npar = numeric(
 all_model_phi <- data.frame()
 all_model_p <- data.frame()
 all_pd <- data.frame()
+ests <- list()
+sigma <- list()
 
 #for loop to estimate abundance for each stock
 for (i in 1:length(subset)){
@@ -33,11 +38,13 @@ for (i in 1:length(subset)){
   set.capdat <- capdat[which(capdat$Area == subset[i]),] %>% 
     filter(!is.na(subarea)) %>% 
     mutate(Long=as.numeric(Long), Lat = as.numeric(Lat)) %>% 
-    mutate(subarea = ifelse(.$Area == "Maui Nui" & 
-                    .$subarea == "OB", ifelse(.$Lat >= 21 & abs(.$Long) > 156.8 | abs(.$Long) >= 157.5, "MA","MB"),subarea))
+    #mutate(subarea = {ifelse(.$Area == "Maui Nui" & .$subarea == "OB", ifelse(.$Lat >= 21 & abs(.$Long) > 156.8 | abs(.$Long) >= 157.5, "MA","MB"),subarea)}) 
+    filter(case_when(Area == "Maui Nui" ~ subarea != "OB", 
+                     Area == "Oahu" ~ !grepl("M",subarea),
+                     Area == "Hawaii" ~ subarea != ".",
+                    Area == "Kauai/Niihau" ~ subarea != "."))
   time.int <- diff(sort(unique(set.capdat$year)))
-  #source("subarea effort estimation.R")
-    
+  
   #format data for RMark ch with year as the sampling period
   tempdat <- set.capdat %>% 
     melt(id.var=c("ID..","year"), measure.var="detect") %>%
@@ -74,9 +81,6 @@ for (i in 1:length(subset)){
     p.time=list(formula=~time)
     p.subarea=list(formula=~subarea)
     p.timesubarea=list(formula=~subarea*time)
-    #p.effort=list(formula=~prop.effort)
-    #p.timeeffort=list(formula=~prop.effort*time)
-  
     
     pent.dot=list(formula=~1)
     pent.time=list(formula=~time)
@@ -100,7 +104,7 @@ for (i in 1:length(subset)){
     model.table() %>% 
     dplyr::select(p, pent, npar, contains("AICc"), contains("Delta"), weight, contains("Deviance")) %>% 
     mutate(Area=subset[i]) %>% 
-    filter(weight > 0) %>%
+    filter(weight > 0.0001) %>%
     mutate(chat = chat)
   all_model.results <- rbind(all_model.results, setNames(Tt.set.results.table, names(all_model.results)))
   
@@ -111,23 +115,25 @@ for (i in 1:length(subset)){
   colnames(all_pd) <- c('Stock','$\\theta$', '$\\theta_{var}$')
 
   Tt.set.est <- popan.derived(obs.data.proc,Tt.set.results)
-  Tt.est.corr <- Tt.set.est$N %>%
-    mutate(N_i = .$N/as.numeric(pd), 
-           year = rep(colnames(tempdat),length(unique(set.capdat$subarea))), 
+  Tt.est.corr <- Tt.set.est$Nbyocc %>%
+    mutate(N_i = .$N/as.numeric(pd),
+           year = colnames(tempdat),
            Area = subset[i]) %>%
     #estimate variance in N_i using delta method (from ALB 2018)
-    mutate(Varcond = (se^2/pd^2)+(pdvar*(N^2/pd^4))) %>% 
-    mutate(SEcond = sqrt(Varcond)) %>% 
-    mutate(CVcond = (SEcond/N_i)) %>% 
-    mutate(C_Burn = exp(1.96*sqrt(log(1+CVcond^2)))) %>% 
+    mutate(Varcond = (se^2/pd^2)+(pdvar*(N^2/pd^4))) %>%
+    mutate(SEcond = sqrt(Varcond)) %>%
+    mutate(CVcond = (SEcond/N_i)) %>%
+    mutate(C_Burn = exp(1.96*sqrt(log(1+CVcond^2)))) %>%
     mutate(LCL = round(N_i/C_Burn,digits=0)) %>%
     mutate(UCL =  round(N_i*C_Burn,digits=0)) %>%
-    group_by(Area, year) %>% 
-    summarize(N_i = round(sum(N_i),digits=0), se = sum(SEcond), CV = sum(CVcond), C_Burn = sum(C_Burn), LCL = sum(LCL), UCL = sum(UCL)) %>% 
-    ungroup() %>% 
-    dplyr::select(-C_Burn) %>% 
+    dplyr::select(-C_Burn) %>%
     rename(Stock = Area)
+
   all_total_abundance <- rbind(all_total_abundance,Tt.est.corr)
+  
+  #save abundance estimates and sigma for later analysis of trends
+  ests[[i]] <- Tt.set.est$Nbyocc$N
+  sigma[[i]] <- Tt.set.est$Nbyocc.vcv
   
   #return model-averaged phi
   MA_phi<-model.average(Tt.set.results,"Phi", drop=TRUE)[1,] %>%
@@ -150,3 +156,62 @@ for (i in 1:length(subset)){
 write.csv(all_model_p, paste("model.average.p.",Sys.Date(),".csv"))
 
 all_model.results$weight <- ifelse(all_model.results$weight >= 0.0001, round(all_model.results$weight, digits = 4), "< 0.0001")
+all_pd$'$\\theta$' <- as.numeric(all_pd$'$\\theta$')
+all_pd$'$\\theta_{var}$' <- as.numeric(all_pd$'$\\theta_{var}$')
+
+#add number of sightings and individuals 
+annual_sight <- capdat %>% 
+  group_by(Area, year) %>% 
+  summarize(Sightings = n(), Individuals = length(unique(ID..)))
+
+all_total_abundance <- all_total_abundance %>% 
+  mutate(year = as.numeric(year)) %>% 
+  left_join(annual_sight, by = c("Stock" = "Area","year"))
+
+#calculate annual growth
+ann.growth <- all_total_abundance %>%
+  mutate(year = as.numeric(year)) %>% 
+  group_by(Stock) %>% 
+  arrange(year) %>%
+  mutate(Diff_year = year - lag(year),  # Difference in time (just in case there are gaps)
+         Diff_growth = N_i - lag(N_i), # Difference in route between years
+         Rate_percent = (Diff_growth / Diff_year)/N_i * 100)  # growth rate in percent 
+  
+mean_growth <- ann.growth %>%
+  summarize(Mean_growth = mean(Rate_percent, na.rm = TRUE))
+
+#calculate CI of slope for each stock
+nrep <- 10000
+stock_slopes <- matrix(0, 4, nrep)
+pop_slope <- rep(0,nrep)
+stock_intercept <- matrix(0,4,nrep)
+pop_intercept <- rep(0,nrep)
+
+for (j in 1:nrep){
+  N <- as.data.frame(seq(2000,2018,by=1))
+  colnames(N) <- "years"
+  for (i in 1:length(subset)){
+    years <- all_total_abundance %>% filter(Stock == subset[i]) %>% .$year
+    N_istock <- rmvnorm(1,ests[[i]],sigma[[i]])[1,]
+    stock_slopes[i,j] <- coefficients(lm(N_istock ~ years,2))[2]
+    stock_intercept[i,j] <- coefficients(lm(N_istock ~ years,2))[1]
+    N_temp <- cbind.data.frame(N_istock,years)
+    stock <- subset[i]
+    N <- N %>% left_join(N_temp, by = "years") %>% rename(!!stock := N_istock)
+  }
+  Ntot <- N %>% drop_na() %>% mutate(Total = rowSums(.[2:5]))
+  pop_slope[j] <- coef(lm(Ntot$Total ~ Ntot$years))[2]
+  pop_intercept[j] <- coef(lm(Ntot$Total ~ Ntot$years))[1]
+}
+
+rownames(stock_slopes) <- subset
+pop_slope_ci <- quantile(pop_slope,probs = c(0.025,0.975))
+pop_intercept_ci <- quantile(pop_intercept, probs = c(0.025, 0.975))
+stock_slopes_ci <- matrix(0,4,2)
+stock_intercept_ci <- matrix(0,4,2)
+for (i in 1:4){
+  stock_slopes_ci[i,1:2] <- quantile(stock_slopes[i,],probs = c(0.025,0.975))
+  stock_intercept_ci[i,1:2] <- quantile(stock_intercept[i,],probs = c(0.025,0.975))
+}
+rownames(stock_slopes_ci) <- subset
+rownames(stock_intercept_ci) <- subset
